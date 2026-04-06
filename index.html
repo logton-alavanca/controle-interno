@@ -78,6 +78,17 @@ label.lbl{display:block;font-size:11px;font-weight:700;text-transform:uppercase;
 .colab-chip{padding:8px 14px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;border:1.5px solid var(--border);background:var(--white);color:var(--text-mid);transition:all .1s}
 .colab-chip.active-indigo{background:var(--indigo);color:#fff;border-color:var(--indigo)}
 .colab-chip.active-amber{background:var(--amber);color:#fff;border-color:var(--amber)}
+.colab-chip.active-teal{background:var(--teal);color:#fff;border-color:var(--teal)}
+.cx-tap-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.cx-tap-item{background:var(--white);border:2px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center;position:relative}
+.cx-tap-item .cx-name{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.cx-tap-item .cx-count{font-size:28px;font-weight:700;font-family:monospace;color:var(--text);margin-bottom:6px}
+.cx-tap-btns{display:flex;gap:6px;justify-content:center}
+.cx-plus{width:40px;height:36px;border-radius:8px;border:none;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--teal);color:#fff}
+.cx-minus{width:40px;height:36px;border-radius:8px;border:none;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--bg);color:var(--muted)}
+.cx-locked-bar{background:var(--teal-bg);padding:10px 14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
+.cx-locked-bar .cx-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase}
+.cx-locked-bar .cx-value{font-size:14px;font-weight:700;color:var(--teal)}
 </style>
 </head>
 <body>
@@ -131,9 +142,13 @@ function registrarSaida(id){state.coletas=state.coletas.map(function(r){return r
 function submitRecebimento(){var f=function(id){return document.getElementById(id);};var cliente=f("rCliente").value.trim(),transp=f("rTransp").value.trim(),desc=f("rDescricao").value.trim(),hora=f("rHora").value,resp=f("rResp").value.trim();if(!cliente||!transp||!desc||!hora||!resp){showToast("Preencha campos obrigatorios","error");return;}var cx=f("rCaixas").value,plt=f("rPaletes").value,extra=f("rQtdExtra").value;if(!cx&&!plt&&!extra){showToast("Informe quantidade","error");return;}var novo={id:Date.now(),_type:"recebimento",data:f("rData").value,hora:hora,cliente:cliente,transportadora:transp,descricao:desc,qtdCaixas:cx?Number(cx):0,qtdPaletes:plt?Number(plt):0,unidadeExtra:f("rUnidExtra").value.trim(),qtdExtra:extra||"",responsavel:resp,observacoes:f("rObs").value.trim()};state.recebimentos.unshift(novo);save();var sd={data:fmtDate(novo.data),hora:novo.hora,cliente:novo.cliente,transportadora:novo.transportadora,descricao:novo.descricao,caixas:novo.qtdCaixas,paletes:novo.qtdPaletes,unidadeExtra:novo.unidadeExtra,qtdExtra:novo.qtdExtra||0,responsavel:novo.responsavel,observacoes:novo.observacoes};if(state.sheetsUrl){sendToSheets("recebimento",sd);showToast("Recebimento registrado e enviado!");}else{showToast("Recebimento registrado!");}state.view="registros";render();}
 
 // Submit Caixas
-var selectedBxCliente="";
-function selectBxCliente(c){selectedBxCliente=c;document.querySelectorAll(".cx-client-chip").forEach(function(el){el.className=el.getAttribute("data-client")===c?"client-chip cx-client-chip active":"client-chip cx-client-chip";});}
-function submitCaixas(){var f=function(id){return document.getElementById(id);};var cliente=f("bxCliente").value.trim()||selectedBxCliente;var resp=f("bxResp").value.trim();var data=f("bxData").value;if(!cliente){showToast("Selecione um cliente","error");return;}if(!resp){showToast("Preencha o nome da conferente","error");return;}var sd={data:fmtDate(data),cliente:cliente,conferente:resp};var temAlgum=false;TIPOS_CX.forEach(function(t){var el=f("bx_"+t.replace(/ /g,"_"));var v=el?Number(el.value)||0:0;sd[t]=v;if(v>0)temAlgum=true;});if(!temAlgum){showToast("Preencha pelo menos uma quantidade","error");return;}if(state.sheetsUrl){sendToSheets("caixas",sd);showToast("Caixas registradas e enviadas!");}else{showToast("Caixas registradas!");}selectedBxCliente="";render();}
+var selectedBxCliente="";var selectedBxColab="";var cxCounters={};
+function initCxCounters(){var obj={};TIPOS_CX.forEach(function(t){obj[t]=0;});cxCounters=obj;}
+initCxCounters();
+function selectBxCliente(c){selectedBxCliente=c;render();}
+function selectBxColab(c){selectedBxColab=c;render();}
+function cxTap(tipo,delta){cxCounters[tipo]=Math.max(0,(cxCounters[tipo]||0)+delta);var el=document.getElementById("cxCnt_"+tipo.replace(/ /g,"_"));if(el)el.textContent=cxCounters[tipo];var totalEl=document.getElementById("cxTotal");if(totalEl){var total=0;TIPOS_CX.forEach(function(t){total+=cxCounters[t]||0;});totalEl.textContent=total;}}
+function submitCaixas(){if(!selectedBxColab){showToast("Selecione seu nome","error");return;}if(!selectedBxCliente){showToast("Selecione o cliente","error");return;}var temAlgum=false;var sd={data:fmtDate(getToday()),cliente:selectedBxCliente,conferente:selectedBxColab};TIPOS_CX.forEach(function(t){sd[t]=cxCounters[t]||0;if(sd[t]>0)temAlgum=true;});if(!temAlgum){showToast("Nenhuma caixa registrada","error");return;}if(state.sheetsUrl){sendToSheets("caixas",sd);showToast("Caixas enviadas! "+selectedBxCliente);}else{showToast("Caixas registradas!");}initCxCounters();render();}
 
 // Submit B2B
 var selectedColab="";var b2bTipo="nacional";var b2bCarga="avulsa";var b2bMontagem="nenhum";var b2bUrgente=false;var selectedB2bCliente="";
@@ -212,10 +227,28 @@ function render(){
   // ──── CAIXAS ────
   if(v==="caixas"){
     h+='<div class="card"><div class="card-hdr"><span class="card-hdr-icon" style="background:var(--teal-bg)">&#128230;</span>Controle de Caixas</div><div class="card-body">';
-    h+='<div class="row2"><div><label class="lbl">Data</label><input type="date" id="bxData" value="'+today+'" class="inp"></div><div><label class="lbl">Conferente *</label><input id="bxResp" class="inp" placeholder="Nome da conferente"></div></div>';
-    h+='<div><label class="lbl">Cliente *</label><input id="bxCliente" class="inp" placeholder="Buscar ou digitar cliente" oninput="filterClients(this.value,\'cx-client-chip\')"><div class="chips" style="margin-top:10px;max-height:160px;overflow-y:auto">';for(var i=0;i<CLIENTES_CX.length;i++){var c=CLIENTES_CX[i];h+='<span class="client-chip cx-client-chip" data-client="'+esc(c)+'" onclick="selectBxCliente(\''+esc(c)+'\');document.getElementById(\'bxCliente\').value=\''+esc(c)+'\'">'+esc(c)+'</span>';}h+='</div></div>';
-    h+='<div><label class="lbl">Quantidade por tipo de caixa</label><div class="cx-grid">';for(var i=0;i<TIPOS_CX.length;i++){var t=TIPOS_CX[i];h+='<div class="cx-item"><label>'+t+'</label><input type="number" min="0" id="bx_'+t.replace(/ /g,"_")+'" value="" placeholder="0"></div>';}h+='</div></div>';
-    h+='<button class="btn-submit" style="background:var(--teal)" onclick="submitCaixas()">&#10003; Registrar Caixas</button>';
+    // Conferente chips
+    if(!selectedBxColab){
+      h+='<div><label class="lbl">Quem esta conferindo? *</label><div class="chips">';for(var i=0;i<COLABS.length;i++){var c=COLABS[i];h+='<span class="colab-chip colab-cx" data-colab="'+c+'" onclick="selectBxColab(\''+c+'\')">'+c+'</span>';}h+='</div></div>';
+    }else{
+      h+='<div class="cx-locked-bar"><div><span class="cx-label">Conferente</span><br><span class="cx-value">'+esc(selectedBxColab)+'</span></div><button style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit" onclick="selectedBxColab=\'\';render()">Trocar</button></div>';
+    }
+    // Cliente chips
+    if(!selectedBxCliente){
+      h+='<div><label class="lbl">Cliente *</label><input id="bxCliente" class="inp" placeholder="Buscar cliente" oninput="filterClients(this.value,\'cx-client-chip\')"><div class="chips" style="margin-top:10px;max-height:140px;overflow-y:auto">';for(var i=0;i<CLIENTES_CX.length;i++){var c=CLIENTES_CX[i];h+='<span class="client-chip cx-client-chip" data-client="'+esc(c)+'" onclick="selectBxCliente(\''+esc(c)+'\')">'+esc(c)+'</span>';}h+='</div></div>';
+    }else{
+      h+='<div class="cx-locked-bar"><div><span class="cx-label">Cliente</span><br><span class="cx-value" id="bxClienteDisp">'+esc(selectedBxCliente)+'</span></div><button style="background:none;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit" onclick="selectedBxCliente=\'\';render()">Trocar</button></div>';
+    }
+    // Tap grid - only show when both are selected
+    if(selectedBxColab && selectedBxCliente){
+      h+='<div style="background:var(--teal-bg);padding:8px 14px;border-radius:8px;text-align:center;font-size:13px;color:var(--teal)">Total: <strong id="cxTotal">';var tot=0;TIPOS_CX.forEach(function(t){tot+=cxCounters[t]||0;});h+=tot+'</strong> caixas</div>';
+      h+='<div class="cx-tap-grid">';
+      for(var i=0;i<TIPOS_CX.length;i++){var t=TIPOS_CX[i];var tid=t.replace(/ /g,"_");
+        h+='<div class="cx-tap-item"><div class="cx-name">'+t+'</div><div class="cx-count" id="cxCnt_'+tid+'">'+(cxCounters[t]||0)+'</div><div class="cx-tap-btns"><button class="cx-minus" onclick="cxTap(\''+t+'\',-1)">-</button><button class="cx-plus" onclick="cxTap(\''+t+'\',1)">+</button></div></div>';
+      }
+      h+='</div>';
+      h+='<button class="btn-submit" style="background:var(--teal)" onclick="submitCaixas()">&#10003; Enviar Caixas ('+esc(selectedBxCliente)+')</button>';
+    }
     h+='</div></div>';
   }
 
