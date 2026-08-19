@@ -83,6 +83,8 @@ label.lbl{display:block;font-size:11px;font-weight:700;text-transform:uppercase;
 .cx-tap-item{background:var(--white);border:2px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center;position:relative}
 .cx-tap-item .cx-name{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
 .cx-tap-item .cx-count{font-size:28px;font-weight:700;font-family:monospace;color:var(--text);margin-bottom:6px}
+.cx-count-input{font-size:28px;font-weight:700;font-family:monospace;color:var(--text);margin-bottom:6px;text-align:center;border:none;background:transparent;width:100%;outline:none}
+.cx-count-input::-webkit-outer-spin-button,.cx-count-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .cx-tap-btns{display:flex;gap:6px;justify-content:center}
 .cx-plus{width:40px;height:36px;border-radius:8px;border:none;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--teal);color:#fff}
 .cx-minus{width:40px;height:36px;border-radius:8px;border:none;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--bg);color:var(--muted)}
@@ -521,7 +523,7 @@ var CLIENTES_INFO = {
 };
 function clienteInfo(nome){var info=CLIENTES_INFO[nome];if(info&&info.razaoSocial){return info.razaoSocial+(info.cnpj?" - CNPJ "+info.cnpj:"");}return nome;}
 var TIPOS_CX = ["CXPA","CXPB","CX1L","CX3L","CX6L","CX10L","CX15L","CX20L","Maleta"];
-var COLABS = ["Amanda","Bruna","Carol","Ediane","Heloisa","Maria Vitoria","Veronica"];
+var COLABS = ["Amanda","Bruna","Carol","Ediane","Heloisa","Maria Vitoria","Sthefany","Veronica"];
 
 var state = {
   view:"romaneio",
@@ -556,6 +558,15 @@ var romClienteAtual=null; // sub-formulario "adicionar cliente" em edicao, ou nu
 
 function escAttr(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function capWords(s){return String(s||"").replace(/(^|\s)\S/g,function(c){return c.toUpperCase();});}
+function formatDocumento(v){
+  var d=String(v||"").replace(/\D/g,"").slice(0,14);
+  if(d.length===11)return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,"$1.$2.$3-$4");
+  if(d.length===14)return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,"$1.$2.$3/$4-$5");
+  if(d.length===9)return d.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/,"$1.$2.$3-$4");
+  if(d.length===8)return d.replace(/(\d{1})(\d{3})(\d{3})(\d{1})/,"$1.$2.$3-$4");
+  if(d.length===7)return d.replace(/(\d{3})(\d{3})(\d{1})/,"$1.$2-$3");
+  return d;
+}
 function gerarIdRomaneio(){var d=new Date();var ymd=d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");var suffix=String(Date.now()).slice(-4);return "ROM-"+ymd+"-"+suffix;}
 function resetRomaneioForm(){romTransportadora="";romPlaca="";romMotoristaNome="";romMotoristaDoc="";romResponsavel="";romEntrada="";romSaida="";romObs="";romClientes=[];romClienteAtual=null;}
 function categoriaFinal(c){return c.categoriaMain==="ecom"?"ecom":(c.categoriaSub==="exportacao"?"b2b-exportacao":"b2b-nacional");}
@@ -568,14 +579,15 @@ function removerClienteRomaneio(idx){romClientes.splice(idx,1);render();}
 function selectRomCliente(c){romClienteAtual.cliente=c;render();}
 function setRomCategoriaMain(cat){romClienteAtual.categoriaMain=cat;render();}
 function setRomCategoriaSub(sub){romClienteAtual.categoriaSub=sub;render();}
-function romTap(campo,delta){romClienteAtual[campo]=Math.max(0,(romClienteAtual[campo]||0)+delta);var el=document.getElementById("romCnt_"+campo);if(el)el.textContent=romClienteAtual[campo];}
+function romTap(campo,delta){romClienteAtual[campo]=Math.max(0,(romClienteAtual[campo]||0)+delta);var el=document.getElementById("romCnt_"+campo);if(el)el.value=romClienteAtual[campo];}
+function romSetCount(campo,val){romClienteAtual[campo]=Math.max(0,parseInt(val,10)||0);}
 function addVolumeRomaneio(){var desc=document.getElementById("romVolDesc").value.trim();var qtd=Number(document.getElementById("romVolQtd").value)||0;if(!desc||qtd<=0){showToast("Informe descricao e quantidade","error");return;}romClienteAtual.outrosVolumes.push({descricao:desc,qtd:qtd});render();}
 function removeVolumeRomaneio(idx){romClienteAtual.outrosVolumes.splice(idx,1);render();}
 function salvarClienteRomaneio(){var c=romClienteAtual;if(!c.cliente){showToast("Selecione o cliente","error");return;}if(!c.caixas&&!c.paletes&&(!c.outrosVolumes||!c.outrosVolumes.length)){showToast("Informe ao menos um volume","error");return;}romClientes.push({cliente:c.cliente,categoria:categoriaFinal(c),caixas:c.caixas||0,paletes:c.paletes||0,outrosVolumes:c.outrosVolumes||[],numPedido:(c.numPedido||"").trim(),numOrdem:(c.numOrdem||"").trim(),numNF:(c.numNF||"").trim()});romClienteAtual=null;render();}
 
 // Submit Romaneio
 function submitRomaneio(){
-  var transp=capWords(romTransportadora.trim()),placa=romPlaca.trim().toUpperCase(),motNome=capWords(romMotoristaNome.trim()),motDoc=romMotoristaDoc.trim(),resp=capWords(romResponsavel.trim());
+  var transp=capWords(romTransportadora.trim()),placa=romPlaca.trim().toUpperCase(),motNome=capWords(romMotoristaNome.trim()),motDoc=formatDocumento(romMotoristaDoc.trim())||romMotoristaDoc.trim(),resp=capWords(romResponsavel.trim());
   if(!transp||!placa||!motNome||!motDoc||!resp||!romEntrada){showToast("Preencha os campos obrigatorios","error");return;}
   if(!romClientes.length){showToast("Adicione ao menos um cliente","error");return;}
   var totalCaixas=0,totalPaletes=0;romClientes.forEach(function(c){totalCaixas+=c.caixas||0;totalPaletes+=c.paletes||0;});
@@ -741,7 +753,7 @@ function render(){
     for(var i=0;i<TRANSP.length;i++){h+='<span class="chip" style="background:var(--white);color:var(--text-mid);border-color:var(--border)" onclick="setChip(\'romTransp\',\''+TRANSP[i]+'\');romTransportadora=\''+TRANSP[i]+'\'">'+TRANSP[i]+'</span>';}
     h+='<span class="chip" style="background:var(--white);color:var(--muted);border-color:var(--border)" onclick="setChip(\'romTransp\',\'Outras\');romTransportadora=\'Outras\'">+ Outras</span></div></div>';
     h+='<div class="row2"><div><label class="lbl">Placa do veiculo *</label><input id="romPlaca" class="inp" style="text-transform:uppercase" value="'+escAttr(romPlaca)+'" placeholder="ABC1D23" oninput="romPlaca=this.value.toUpperCase()"></div><div><label class="lbl">Nome do motorista *</label><input id="romMotoristaNome" class="inp" style="text-transform:capitalize" value="'+escAttr(romMotoristaNome)+'" placeholder="Nome completo" oninput="romMotoristaNome=capWords(this.value)"></div></div>';
-    h+='<div class="row2"><div><label class="lbl">Documento do motorista *</label><input id="romMotoristaDoc" class="inp" value="'+escAttr(romMotoristaDoc)+'" placeholder="RG ou CPF" oninput="romMotoristaDoc=this.value"></div><div><label class="lbl">Responsavel Expedicao *</label><input id="romResponsavel" class="inp" style="text-transform:capitalize" value="'+escAttr(romResponsavel)+'" placeholder="Quem esta registrando" oninput="romResponsavel=capWords(this.value)"></div></div>';
+    h+='<div class="row2"><div><label class="lbl">Documento do motorista *</label><input id="romMotoristaDoc" class="inp" value="'+escAttr(romMotoristaDoc)+'" placeholder="RG ou CPF" inputmode="numeric" oninput="romMotoristaDoc=formatDocumento(this.value);this.value=romMotoristaDoc"></div><div><label class="lbl">Responsavel Expedicao *</label><input id="romResponsavel" class="inp" style="text-transform:capitalize" value="'+escAttr(romResponsavel)+'" placeholder="Quem esta registrando" oninput="romResponsavel=capWords(this.value)"></div></div>';
     h+='<div class="row2"><div><label class="lbl">Entrada *</label><div class="time-wrap"><input type="time" id="romEntrada" class="inp" value="'+escAttr(romEntrada)+'" oninput="romEntrada=this.value"><button class="now-btn" style="background:var(--blue)" onclick="document.getElementById(\'romEntrada\').value=getNow();romEntrada=getNow()">AGORA</button></div></div><div><label class="lbl">Saida</label><div class="time-wrap"><input type="time" id="romSaida" class="inp" value="'+escAttr(romSaida)+'" oninput="romSaida=this.value"><button class="now-btn" style="background:var(--blue)" onclick="document.getElementById(\'romSaida\').value=getNow();romSaida=getNow()">AGORA</button></div></div></div>';
     h+='</div></div>';
 
@@ -765,8 +777,8 @@ function render(){
           h+='<div><label class="lbl">Tipo B2B</label><div class="toggle-row"><div class="toggle-btn'+(ca.categoriaSub==="nacional"?" active":"")+'" onclick="setRomCategoriaSub(\'nacional\')"><div class="icon">&#127463;&#127479;</div><div class="label">Nacional</div></div><div class="toggle-btn'+(ca.categoriaSub==="exportacao"?" active":"")+'" onclick="setRomCategoriaSub(\'exportacao\')"><div class="icon">&#127758;</div><div class="label">Exportacao</div></div></div></div>';
         }
         h+='<div class="cx-tap-grid" style="grid-template-columns:1fr 1fr">';
-        h+='<div class="cx-tap-item"><div class="cx-name">Caixas</div><div class="cx-count" id="romCnt_caixas">'+(ca.caixas||0)+'</div><div class="cx-tap-btns"><button class="cx-minus" onclick="romTap(\'caixas\',-1)">-</button><button class="cx-plus" style="background:var(--blue)" onclick="romTap(\'caixas\',1)">+</button></div></div>';
-        h+='<div class="cx-tap-item"><div class="cx-name">Paletes</div><div class="cx-count" id="romCnt_paletes">'+(ca.paletes||0)+'</div><div class="cx-tap-btns"><button class="cx-minus" onclick="romTap(\'paletes\',-1)">-</button><button class="cx-plus" style="background:var(--blue)" onclick="romTap(\'paletes\',1)">+</button></div></div>';
+        h+='<div class="cx-tap-item"><div class="cx-name">Caixas</div><input type="number" min="0" class="cx-count-input" id="romCnt_caixas" value="'+(ca.caixas||0)+'" oninput="romSetCount(\'caixas\',this.value)"><div class="cx-tap-btns"><button class="cx-minus" onclick="romTap(\'caixas\',-1)">-</button><button class="cx-plus" style="background:var(--blue)" onclick="romTap(\'caixas\',1)">+</button></div></div>';
+        h+='<div class="cx-tap-item"><div class="cx-name">Paletes</div><input type="number" min="0" class="cx-count-input" id="romCnt_paletes" value="'+(ca.paletes||0)+'" oninput="romSetCount(\'paletes\',this.value)"><div class="cx-tap-btns"><button class="cx-minus" onclick="romTap(\'paletes\',-1)">-</button><button class="cx-plus" style="background:var(--blue)" onclick="romTap(\'paletes\',1)">+</button></div></div>';
         h+='</div>';
         h+='<div><label class="lbl">Outros Volumes (opcional)</label><div class="row2"><input class="inp" id="romVolDesc" placeholder="Descricao (ex: Sacaria)"><input type="number" min="1" class="inp" id="romVolQtd" placeholder="Qtd"></div><button class="act-btn" style="background:var(--blue-bg);color:var(--blue);margin-top:8px" onclick="addVolumeRomaneio()">+ Adicionar Volume</button>';
         (ca.outrosVolumes||[]).forEach(function(v,vi){h+='<div class="vol-row"><span>'+esc(v.descricao)+' &times; '+v.qtd+'</span><button class="vol-remove" onclick="removeVolumeRomaneio('+vi+')">&#10005;</button></div>';});
