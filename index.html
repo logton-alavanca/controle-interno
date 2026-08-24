@@ -518,7 +518,7 @@ var CLIENTES_INFO = {
   "Felicia":{razaoSocial:"",cnpj:""}, "Folitrix":{razaoSocial:"",cnpj:""}, "Gocca":{razaoSocial:"",cnpj:""},
   "Hanna Lee":{razaoSocial:"",cnpj:""}, "Hydra":{razaoSocial:"",cnpj:""}, "Knut":{razaoSocial:"MILK COMERCIO DE COSMETICOS LTDA",cnpj:"37.470.907/0001-24"},
   "More":{razaoSocial:"",cnpj:""}, "Sava":{razaoSocial:"",cnpj:""}, "Sem Fronteira":{razaoSocial:"",cnpj:""},
-  "Sobrebarba":{razaoSocial:"",cnpj:""}, "Sorali":{razaoSocial:"",cnpj:""}, "SP Hair":{razaoSocial:"",cnpj:""},
+  "Sobrebarba":{razaoSocial:"",cnpj:""}, "Sorali":{razaoSocial:"SORALI COSMETIC PRODUTOS DE HIGIENE LTDA",cnpj:"18.474.047/0001-52"}, "SP Hair":{razaoSocial:"",cnpj:""},
   "Swetage":{razaoSocial:"",cnpj:""}, "Truly":{razaoSocial:"",cnpj:""}
 };
 function clienteInfo(nome){var info=CLIENTES_INFO[nome];if(info&&info.razaoSocial){return info.razaoSocial+(info.cnpj?" - CNPJ "+info.cnpj:"");}return nome;}
@@ -547,7 +547,16 @@ function sendToSheets(tipo,registro){if(!state.sheetsUrl)return;state.sending=tr
 
 // Signature
 var sigCanvas,sigCtx,sigDrawing=false,sigHasContent=false,sigData=null;
-function initSig(){sigCanvas=document.getElementById("sigCanvas");if(!sigCanvas)return;sigCtx=sigCanvas.getContext("2d");var rect=sigCanvas.getBoundingClientRect();sigCanvas.width=rect.width*2;sigCanvas.height=rect.height*2;sigCtx.scale(2,2);sigCtx.strokeStyle="#1B2A4A";sigCtx.lineWidth=2.5;sigCtx.lineCap="round";sigCtx.lineJoin="round";sigHasContent=false;sigData=null;function gp(e){var r=sigCanvas.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}function sd(e){e.preventDefault();sigCtx.beginPath();var p=gp(e);sigCtx.moveTo(p.x,p.y);sigDrawing=true;}function mv(e){if(!sigDrawing)return;e.preventDefault();var p=gp(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();sigHasContent=true;document.getElementById("sigPlaceholder").style.display="none";document.getElementById("sigClearBtn").style.display="inline-block";}function en(e){if(!sigDrawing)return;e.preventDefault();sigDrawing=false;sigData=sigCanvas.toDataURL("image/png");}sigCanvas.addEventListener("mousedown",sd);sigCanvas.addEventListener("mousemove",mv);sigCanvas.addEventListener("mouseup",en);sigCanvas.addEventListener("mouseleave",en);sigCanvas.addEventListener("touchstart",sd);sigCanvas.addEventListener("touchmove",mv);sigCanvas.addEventListener("touchend",en);}
+function initSig(){sigCanvas=document.getElementById("sigCanvas");if(!sigCanvas)return;sigCtx=sigCanvas.getContext("2d");var rect=sigCanvas.getBoundingClientRect();sigCanvas.width=rect.width*2;sigCanvas.height=rect.height*2;sigCtx.scale(2,2);sigCtx.strokeStyle="#1B2A4A";sigCtx.lineWidth=2.5;sigCtx.lineCap="round";sigCtx.lineJoin="round";sigDrawing=false;
+  if(sigData){
+    sigHasContent=true;
+    var img=new Image();img.onload=function(){sigCtx.drawImage(img,0,0,rect.width,rect.height);};img.src=sigData;
+    var ph0=document.getElementById("sigPlaceholder");if(ph0)ph0.style.display="none";
+    var cb0=document.getElementById("sigClearBtn");if(cb0)cb0.style.display="inline-block";
+  }else{
+    sigHasContent=false;
+  }
+  function gp(e){var r=sigCanvas.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}function sd(e){e.preventDefault();sigCtx.beginPath();var p=gp(e);sigCtx.moveTo(p.x,p.y);sigDrawing=true;}function mv(e){if(!sigDrawing)return;e.preventDefault();var p=gp(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();sigHasContent=true;document.getElementById("sigPlaceholder").style.display="none";document.getElementById("sigClearBtn").style.display="inline-block";}function en(e){if(!sigDrawing)return;e.preventDefault();sigDrawing=false;sigData=sigCanvas.toDataURL("image/png");}sigCanvas.addEventListener("mousedown",sd);sigCanvas.addEventListener("mousemove",mv);sigCanvas.addEventListener("mouseup",en);sigCanvas.addEventListener("mouseleave",en);sigCanvas.addEventListener("touchstart",sd);sigCanvas.addEventListener("touchmove",mv);sigCanvas.addEventListener("touchend",en);}
 function clearSig(){var rect=sigCanvas.getBoundingClientRect();sigCtx.clearRect(0,0,rect.width,rect.height);sigHasContent=false;sigData=null;document.getElementById("sigPlaceholder").style.display="flex";document.getElementById("sigClearBtn").style.display="none";}
 
 // ═══ Romaneio vars ═══
@@ -568,13 +577,13 @@ function formatDocumento(v){
   return d;
 }
 function gerarIdRomaneio(){var d=new Date();var ymd=d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");var suffix=String(Date.now()).slice(-4);return "ROM-"+ymd+"-"+suffix;}
-function resetRomaneioForm(){romTransportadora="";romPlaca="";romMotoristaNome="";romMotoristaDoc="";romResponsavel="";romEntrada="";romSaida="";romObs="";romClientes=[];romClienteAtual=null;}
+function resetRomaneioForm(){romTransportadora="";romPlaca="";romMotoristaNome="";romMotoristaDoc="";romResponsavel="";romEntrada="";romSaida="";romObs="";romClientes=[];romClienteAtual=null;sigData=null;sigHasContent=false;}
 function categoriaFinal(c){return c.categoriaMain==="ecom"?"ecom":(c.categoriaSub==="exportacao"?"b2b-exportacao":"b2b-nacional");}
 function categoriaLabel(cat){return cat==="ecom"?"E-COM":cat==="b2b-exportacao"?"B2B Exportacao":"B2B Nacional";}
 
-function novoClienteRomaneio(){romClienteAtual={cliente:"",categoriaMain:"ecom",categoriaSub:"nacional",caixas:0,paletes:0,outrosVolumes:[],numPedido:"",numOrdem:"",numNF:""};render();}
+function novoClienteRomaneio(){romClienteAtual={cliente:"",categoriaMain:"ecom",categoriaSub:"nacional",caixas:0,paletes:0,outrosVolumes:[],numPedido:"",numOrdem:"",numNF:"",destNome:"",destCidadeUf:""};render();}
 function cancelarClienteRomaneio(){romClienteAtual=null;render();}
-function editarClienteRomaneio(idx){var c=romClientes[idx];romClienteAtual={cliente:c.cliente,categoriaMain:c.categoria==="ecom"?"ecom":"b2b",categoriaSub:c.categoria==="b2b-exportacao"?"exportacao":"nacional",caixas:c.caixas,paletes:c.paletes,outrosVolumes:(c.outrosVolumes||[]).slice(),numPedido:c.numPedido||"",numOrdem:c.numOrdem||"",numNF:c.numNF||""};romClientes.splice(idx,1);render();}
+function editarClienteRomaneio(idx){var c=romClientes[idx];romClienteAtual={cliente:c.cliente,categoriaMain:c.categoria==="ecom"?"ecom":"b2b",categoriaSub:c.categoria==="b2b-exportacao"?"exportacao":"nacional",caixas:c.caixas,paletes:c.paletes,outrosVolumes:(c.outrosVolumes||[]).slice(),numPedido:c.numPedido||"",numOrdem:c.numOrdem||"",numNF:c.numNF||"",destNome:c.destNome||"",destCidadeUf:c.destCidadeUf||""};romClientes.splice(idx,1);render();}
 function removerClienteRomaneio(idx){romClientes.splice(idx,1);render();}
 function selectRomCliente(c){romClienteAtual.cliente=c;render();}
 function setRomCategoriaMain(cat){romClienteAtual.categoriaMain=cat;render();}
@@ -583,20 +592,23 @@ function romTap(campo,delta){romClienteAtual[campo]=Math.max(0,(romClienteAtual[
 function romSetCount(campo,val){romClienteAtual[campo]=Math.max(0,parseInt(val,10)||0);}
 function addVolumeRomaneio(){var desc=document.getElementById("romVolDesc").value.trim();var qtd=Number(document.getElementById("romVolQtd").value)||0;if(!desc||qtd<=0){showToast("Informe descricao e quantidade","error");return;}romClienteAtual.outrosVolumes.push({descricao:desc,qtd:qtd});render();}
 function removeVolumeRomaneio(idx){romClienteAtual.outrosVolumes.splice(idx,1);render();}
-function salvarClienteRomaneio(){var c=romClienteAtual;if(!c.cliente){showToast("Selecione o cliente","error");return;}if(!c.caixas&&!c.paletes&&(!c.outrosVolumes||!c.outrosVolumes.length)){showToast("Informe ao menos um volume","error");return;}romClientes.push({cliente:c.cliente,categoria:categoriaFinal(c),caixas:c.caixas||0,paletes:c.paletes||0,outrosVolumes:c.outrosVolumes||[],numPedido:(c.numPedido||"").trim(),numOrdem:(c.numOrdem||"").trim(),numNF:(c.numNF||"").trim()});romClienteAtual=null;render();}
+function clienteAtualTemVolume(c){return !!(c.caixas||c.paletes||(c.outrosVolumes&&c.outrosVolumes.length));}
+function construirClientePayload(c){return{cliente:c.cliente,categoria:categoriaFinal(c),caixas:c.caixas||0,paletes:c.paletes||0,outrosVolumes:c.outrosVolumes||[],numPedido:(c.numPedido||"").trim(),numOrdem:(c.numOrdem||"").trim(),numNF:(c.numNF||"").trim(),destNome:(c.destNome||"").trim(),destCidadeUf:(c.destCidadeUf||"").trim()};}
+function salvarClienteRomaneio(){var c=romClienteAtual;if(!c.cliente){showToast("Selecione o cliente","error");return;}if(!clienteAtualTemVolume(c)){showToast("Informe ao menos um volume","error");return;}romClientes.push(construirClientePayload(c));romClienteAtual=null;render();}
 
 // Submit Romaneio
 function submitRomaneio(){
+  if(romClienteAtual&&romClienteAtual.cliente&&clienteAtualTemVolume(romClienteAtual)){romClientes.push(construirClientePayload(romClienteAtual));romClienteAtual=null;}
   var transp=capWords(romTransportadora.trim()),placa=romPlaca.trim().toUpperCase(),motNome=capWords(romMotoristaNome.trim()),motDoc=formatDocumento(romMotoristaDoc.trim())||romMotoristaDoc.trim(),resp=capWords(romResponsavel.trim());
   if(!transp||!placa||!motNome||!motDoc||!resp||!romEntrada){showToast("Preencha os campos obrigatorios","error");return;}
-  if(!romClientes.length){showToast("Adicione ao menos um cliente","error");return;}
+  if(!romClientes.length){showToast("Adicione ao menos um cliente (selecione e clique em Salvar Cliente)","error");return;}
   var totalCaixas=0,totalPaletes=0;romClientes.forEach(function(c){totalCaixas+=c.caixas||0;totalPaletes+=c.paletes||0;});
   var novoRomaneio={id:Date.now(),_type:"romaneio",romaneioId:gerarIdRomaneio(),data:getToday(),transportadora:transp,placa:placa,motoristaNome:motNome,motoristaDoc:motDoc,responsavel:resp,horarioEntrada:romEntrada,horarioSaida:romSaida,clientes:romClientes,observacoes:romObs.trim(),assinatura:sigData,totalCaixas:totalCaixas,totalPaletes:totalPaletes,qtdClientes:romClientes.length};
   state.romaneios.unshift(novoRomaneio);save();
   var sdGeral={romaneioId:novoRomaneio.romaneioId,data:fmtDate(novoRomaneio.data),transportadora:transp,placa:placa,motoristaNome:motNome,motoristaDoc:motDoc,horarioEntrada:romEntrada,horarioSaida:romSaida,qtdClientes:romClientes.length,totalCaixas:totalCaixas,totalPaletes:totalPaletes,responsavel:resp,observacoes:novoRomaneio.observacoes,temAssinatura:sigData?"Sim":"Nao"};
   if(state.sheetsUrl){
     sendToSheets("romaneio",sdGeral);
-    romClientes.forEach(function(c){sendToSheets("romaneio_item",{idRomaneio:novoRomaneio.romaneioId,cliente:c.cliente,categoria:categoriaLabel(c.categoria),numPedido:c.numPedido||"",numOrdem:c.numOrdem||"",numNF:c.numNF||"",caixas:c.caixas,paletes:c.paletes,outrosVolumes:(c.outrosVolumes||[]).map(function(v){return v.descricao+":"+v.qtd;}).join("; ")});});
+    romClientes.forEach(function(c){sendToSheets("romaneio_item",{idRomaneio:novoRomaneio.romaneioId,cliente:c.cliente,categoria:categoriaLabel(c.categoria),numPedido:c.numPedido||"",numOrdem:c.numOrdem||"",numNF:c.numNF||"",destNome:c.destNome||"",destCidadeUf:c.destCidadeUf||"",caixas:c.caixas,paletes:c.paletes,outrosVolumes:(c.outrosVolumes||[]).map(function(v){return v.descricao+":"+v.qtd;}).join("; ")});});
     showToast("Romaneio fechado e enviado!");
   }else{showToast("Romaneio fechado!");}
   resetRomaneioForm();state.expandedId=novoRomaneio.id;state.view="registros";render();
@@ -686,11 +698,13 @@ function pdfSignatureBlock(doc,r,y){
 }
 function pdfClienteBlock(doc,c,x,y,w){
   var pedOrd=[c.numPedido?"Pedido: "+c.numPedido:"",c.numOrdem?"Ordem: "+c.numOrdem:"",c.numNF?"NF: "+c.numNF:""].filter(Boolean).join("   ");
+  var dest=[c.destNome?"Destinatario: "+c.destNome:"",c.destCidadeUf?"("+c.destCidadeUf+")":""].filter(Boolean).join(" ");
   doc.setFont(undefined,"bold");doc.setFontSize(10);doc.setTextColor(20,20,20);
   var nomeLinhas=doc.splitTextToSize(clienteInfo(c.cliente)+"  ["+categoriaLabel(c.categoria)+"]",w);
   nomeLinhas.forEach(function(linha){doc.text(linha,x,y);y+=5;});
   doc.setFont(undefined,"normal");doc.setFontSize(9);
   if(pedOrd){doc.text(pedOrd,x+3,y);y+=5;}
+  if(dest){doc.text(dest,x+3,y);y+=5;}
   doc.text("Caixas: "+c.caixas+"   Paletes: "+c.paletes,x+3,y);y+=5;
   (c.outrosVolumes||[]).forEach(function(v){doc.text("- "+v.descricao+": "+v.qtd,x+3,y);y+=5;});
   return y+3;
@@ -760,7 +774,7 @@ function render(){
     // Card 2 — Clientes desta coleta
     h+='<div class="card"><div class="card-hdr"><span class="card-hdr-icon" style="background:var(--blue-bg)">&#128100;</span>Clientes desta coleta</div><div class="card-body">';
     romClientes.forEach(function(c,idx){
-      var resumo=c.caixas+' cx &middot; '+c.paletes+' plt'+((c.outrosVolumes&&c.outrosVolumes.length)?' &middot; '+c.outrosVolumes.length+' outros':'')+(c.numPedido?' &middot; Ped. '+esc(c.numPedido):'')+(c.numOrdem?' &middot; Ord. '+esc(c.numOrdem):'')+(c.numNF?' &middot; NF '+esc(c.numNF):'');
+      var resumo=c.caixas+' cx &middot; '+c.paletes+' plt'+((c.outrosVolumes&&c.outrosVolumes.length)?' &middot; '+c.outrosVolumes.length+' outros':'')+(c.numPedido?' &middot; Ped. '+esc(c.numPedido):'')+(c.numOrdem?' &middot; Ord. '+esc(c.numOrdem):'')+(c.numNF?' &middot; NF '+esc(c.numNF):'')+(c.destNome?' &middot; Dest. '+esc(c.destNome):'')+(c.destCidadeUf?' ('+esc(c.destCidadeUf)+')':'');
       h+='<div class="rom-cliente-row"><div class="info"><span class="name">'+esc(c.cliente)+' <span class="tag" style="background:var(--blue-bg);color:var(--blue)">'+categoriaLabel(c.categoria)+'</span></span><span class="meta">'+resumo+'</span></div><div class="row-actions"><button onclick="editarClienteRomaneio('+idx+')" title="Editar">&#9998;</button><button onclick="removerClienteRomaneio('+idx+')" title="Remover">&#10005;</button></div></div>';
     });
     if(romClienteAtual){
@@ -772,6 +786,7 @@ function render(){
       }else{
         h+='<div class="cx-locked-bar" style="background:var(--blue-bg)"><div><span class="cx-label">Cliente</span><br><span class="cx-value" style="color:var(--blue)">'+esc(ca.cliente)+'</span></div><button style="background:none;border:1px solid var(--blue);color:var(--blue);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit" onclick="romClienteAtual.cliente=\'\';render()">Trocar</button></div>';
         h+='<div class="row3"><div><label class="lbl">N. Pedido (opcional)</label><input class="inp" value="'+escAttr(ca.numPedido)+'" placeholder="Pedido" oninput="romClienteAtual.numPedido=this.value"></div><div><label class="lbl">N. Ordem (opcional)</label><input class="inp" value="'+escAttr(ca.numOrdem)+'" placeholder="Ordem" oninput="romClienteAtual.numOrdem=this.value"></div><div><label class="lbl">N. NF (opcional)</label><input class="inp" value="'+escAttr(ca.numNF)+'" placeholder="Nota fiscal" oninput="romClienteAtual.numNF=this.value"></div></div>';
+        h+='<div class="row2"><div><label class="lbl">Destinatario (opcional)</label><input class="inp" style="text-transform:capitalize" value="'+escAttr(ca.destNome)+'" placeholder="Nome do destinatario" oninput="romClienteAtual.destNome=capWords(this.value)"></div><div><label class="lbl">Cidade - Estado (opcional)</label><input class="inp" style="text-transform:capitalize" value="'+escAttr(ca.destCidadeUf)+'" placeholder="Ex: Franca - SP" oninput="romClienteAtual.destCidadeUf=capWords(this.value)"></div></div>';
         h+='<div><label class="lbl">Categoria</label><div class="toggle-row"><div class="toggle-btn'+(ca.categoriaMain==="ecom"?" active":"")+'" onclick="setRomCategoriaMain(\'ecom\')" style="'+(ca.categoriaMain==="ecom"?"border-color:var(--blue);background:var(--blue-bg)":"")+'"><div class="icon">&#128722;</div><div class="label">E-COM</div></div><div class="toggle-btn'+(ca.categoriaMain==="b2b"?" active":"")+'" onclick="setRomCategoriaMain(\'b2b\')" style="'+(ca.categoriaMain==="b2b"?"border-color:var(--blue);background:var(--blue-bg)":"")+'"><div class="icon">&#127970;</div><div class="label">B2B</div></div></div></div>';
         if(ca.categoriaMain==="b2b"){
           h+='<div><label class="lbl">Tipo B2B</label><div class="toggle-row"><div class="toggle-btn'+(ca.categoriaSub==="nacional"?" active":"")+'" onclick="setRomCategoriaSub(\'nacional\')"><div class="icon">&#127463;&#127479;</div><div class="label">Nacional</div></div><div class="toggle-btn'+(ca.categoriaSub==="exportacao"?" active":"")+'" onclick="setRomCategoriaSub(\'exportacao\')"><div class="icon">&#127758;</div><div class="label">Exportacao</div></div></div></div>';
@@ -901,7 +916,7 @@ function render(){
     if(exp&&isRom){
       h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-lt)">';
       h+='<div style="font-size:12px;color:var(--text-mid);margin-bottom:8px">Placa: <strong>'+esc(r.placa)+'</strong> &middot; Doc. motorista: <strong>'+esc(r.motoristaDoc)+'</strong> &middot; Responsavel: <strong>'+esc(r.responsavel)+'</strong></div>';
-      r.clientes.forEach(function(c){var resumo=c.caixas+' cx &middot; '+c.paletes+' plt'+((c.outrosVolumes&&c.outrosVolumes.length)?' &middot; '+c.outrosVolumes.length+' outros':'')+(c.numPedido?' &middot; Ped. '+esc(c.numPedido):'')+(c.numOrdem?' &middot; Ord. '+esc(c.numOrdem):'')+(c.numNF?' &middot; NF '+esc(c.numNF):'');h+='<div class="rom-cliente-row"><div class="info"><span class="name">'+esc(c.cliente)+' <span class="tag" style="background:var(--blue-bg);color:var(--blue)">'+categoriaLabel(c.categoria)+'</span></span><span class="meta">'+resumo+'</span></div></div>';});
+      r.clientes.forEach(function(c){var resumo=c.caixas+' cx &middot; '+c.paletes+' plt'+((c.outrosVolumes&&c.outrosVolumes.length)?' &middot; '+c.outrosVolumes.length+' outros':'')+(c.numPedido?' &middot; Ped. '+esc(c.numPedido):'')+(c.numOrdem?' &middot; Ord. '+esc(c.numOrdem):'')+(c.numNF?' &middot; NF '+esc(c.numNF):'')+(c.destNome?' &middot; Dest. '+esc(c.destNome):'')+(c.destCidadeUf?' ('+esc(c.destCidadeUf)+')':'');h+='<div class="rom-cliente-row"><div class="info"><span class="name">'+esc(c.cliente)+' <span class="tag" style="background:var(--blue-bg);color:var(--blue)">'+categoriaLabel(c.categoria)+'</span></span><span class="meta">'+resumo+'</span></div></div>';});
       if(r.assinatura){h+='<div style="text-align:center;margin:10px 0"><img src="'+r.assinatura+'" style="max-width:100%;height:60px;object-fit:contain"></div>';}
       h+='<div class="actions"><button class="act-btn" style="background:var(--blue-bg);color:var(--blue)" onclick="verGeralPdf('+r.id+')">&#128065; Ver PDF Geral</button><button class="act-btn" style="background:var(--blue);color:#fff" onclick="baixarGeralPdf('+r.id+')">&#11015; Baixar Geral</button></div>';
       if(r.qtdClientes>1){
