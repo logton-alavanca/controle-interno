@@ -533,9 +533,10 @@ var state = {
   recebimentos:JSON.parse(localStorage.getItem("docas_recebimentos")||"[]"),
   b2b:JSON.parse(localStorage.getItem("docas_b2b")||"[]"),
   romaneios:JSON.parse(localStorage.getItem("docas_romaneios")||"[]"),
+  romaneiosRascunhos:JSON.parse(localStorage.getItem("docas_romaneios_rascunhos")||"[]"),
   toast:null
 };
-function save(){localStorage.setItem("docas_coletas",JSON.stringify(state.coletas));localStorage.setItem("docas_recebimentos",JSON.stringify(state.recebimentos));localStorage.setItem("docas_b2b",JSON.stringify(state.b2b));localStorage.setItem("docas_romaneios",JSON.stringify(state.romaneios));localStorage.setItem("docas_sheets_url",state.sheetsUrl);}
+function save(){localStorage.setItem("docas_coletas",JSON.stringify(state.coletas));localStorage.setItem("docas_recebimentos",JSON.stringify(state.recebimentos));localStorage.setItem("docas_b2b",JSON.stringify(state.b2b));localStorage.setItem("docas_romaneios",JSON.stringify(state.romaneios));localStorage.setItem("docas_romaneios_rascunhos",JSON.stringify(state.romaneiosRascunhos));localStorage.setItem("docas_sheets_url",state.sheetsUrl);}
 function getToday(){return new Date().toISOString().split("T")[0];}
 function getNow(){var n=new Date();return String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");}
 function fmtDate(d){if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}
@@ -578,6 +579,9 @@ function formatDocumento(v){
 }
 function gerarIdRomaneio(){var d=new Date();var ymd=d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");var suffix=String(Date.now()).slice(-4);return "ROM-"+ymd+"-"+suffix;}
 function resetRomaneioForm(){romTransportadora="";romPlaca="";romMotoristaNome="";romMotoristaDoc="";romResponsavel="";romEntrada="";romSaida="";romObs="";romClientes=[];romClienteAtual=null;sigData=null;sigHasContent=false;}
+function salvarRascunho(){state.romaneiosRascunhos.unshift({id:Date.now(),transportadora:romTransportadora.trim(),responsavel:romResponsavel.trim(),clientes:romClientes,observacoes:romObs.trim(),criadoEm:getToday()});save();resetRomaneioForm();showToast("Rascunho salvo!");render();}
+function continuarRascunho(id){var idx=state.romaneiosRascunhos.findIndex(function(d){return d.id===id;});if(idx<0)return;var d=state.romaneiosRascunhos[idx];romTransportadora=d.transportadora;romResponsavel=d.responsavel;romClientes=d.clientes;romObs=d.observacoes;romClienteAtual=null;state.romaneiosRascunhos.splice(idx,1);save();render();}
+function excluirRascunho(id){state.romaneiosRascunhos=state.romaneiosRascunhos.filter(function(d){return d.id!==id;});save();showToast("Rascunho excluido","error");render();}
 function categoriaFinal(c){return c.categoriaMain==="ecom"?"ecom":(c.categoriaSub==="exportacao"?"b2b-exportacao":"b2b-nacional");}
 function categoriaLabel(cat){return cat==="ecom"?"E-COM":cat==="b2b-exportacao"?"B2B Exportacao":"B2B Nacional";}
 
@@ -753,13 +757,22 @@ function render(){
 
   h+='';
 
-  var tabs=[{key:"romaneio",label:"&#128196; Romaneio",color:"var(--blue)"},{key:"recebimento",label:"&#128229; Receb.",color:"var(--purple)"},{key:"caixas",label:"&#128230; Caixas",color:"var(--teal)"},{key:"b2b",label:"&#128203; B2B",color:"var(--indigo)"},{key:"cq",label:"&#9889; CQ",color:"var(--amber)"},{key:"registros",label:"&#128202; Reg.",color:"var(--navy)"}];
+  var tabs=[{key:"romaneio",label:"&#128196; Romaneio"+(state.romaneiosRascunhos.length?" ("+state.romaneiosRascunhos.length+")":""),color:"var(--blue)"},{key:"recebimento",label:"&#128229; Receb.",color:"var(--purple)"},{key:"caixas",label:"&#128230; Caixas",color:"var(--teal)"},{key:"b2b",label:"&#128203; B2B",color:"var(--indigo)"},{key:"cq",label:"&#9889; CQ",color:"var(--amber)"},{key:"registros",label:"&#128202; Reg.",color:"var(--navy)"}];
   h+='<div class="tabs">';for(var ti=0;ti<tabs.length;ti++){var t=tabs[ti];h+='<button class="tab" style="background:'+(v===t.key?t.color:"var(--card)")+';color:'+(v===t.key?"#fff":"var(--muted)")+'" onclick="state.view=\''+t.key+'\';render()">'+t.label+'</button>';}h+='</div>';
   h+='<div class="content">';
 
   // ──── ROMANEIO ────
   if(v==="romaneio"){
     h+='<div style="display:flex;flex-direction:column;gap:14px">';
+
+    // Rascunhos pendentes — so aparece com o formulario ativo vazio
+    if(state.romaneiosRascunhos.length && !romTransportadora && !romClientes.length){
+      h+='<div class="card"><div class="card-hdr"><span class="card-hdr-icon" style="background:var(--blue-bg)">&#128190;</span>Rascunhos pendentes ('+state.romaneiosRascunhos.length+')</div><div class="card-body">';
+      state.romaneiosRascunhos.forEach(function(d){
+        h+='<div class="rom-cliente-row"><div class="info"><span class="name">'+esc(d.transportadora||"(sem transportadora)")+'</span><span class="meta">'+d.clientes.length+' cliente(s) &middot; criado em '+fmtDate(d.criadoEm)+'</span></div><div class="row-actions"><button onclick="continuarRascunho('+d.id+')" style="background:var(--blue);color:#fff;border-radius:6px;padding:6px 10px;font-size:12px">Continuar</button><button onclick="excluirRascunho('+d.id+')" title="Excluir">&#10005;</button></div></div>';
+      });
+      h+='</div></div>';
+    }
 
     // Card 1 — Dados gerais
     h+='<div class="card"><div class="card-hdr"><span class="card-hdr-icon" style="background:var(--blue-bg)">&#128196;</span>Romaneio de Coleta</div><div class="card-body">';
@@ -813,7 +826,7 @@ function render(){
     // Card 4 — Observacoes + Fechar Romaneio
     h+='<div class="card"><div class="card-body">';
     h+='<div><label class="lbl">Observacoes Gerais</label><input id="romObs" class="inp" value="'+escAttr(romObs)+'" placeholder="Observacoes sobre a coleta" oninput="romObs=this.value"></div>';
-    h+='<button class="btn-submit" style="background:var(--blue)" onclick="submitRomaneio()">&#10003; Fechar Romaneio</button>';
+    h+='<div class="row2"><button class="act-btn" style="background:var(--bg);color:var(--muted)" onclick="salvarRascunho()">&#128190; Salvar Rascunho</button><button class="act-btn" style="background:var(--blue);color:#fff" onclick="submitRomaneio()">&#10003; Fechar Romaneio</button></div>';
     h+='</div></div>';
 
     h+='</div>';
