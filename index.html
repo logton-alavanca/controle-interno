@@ -524,6 +524,68 @@ var CLIENTES_INFO = {
 function clienteInfo(nome){var info=CLIENTES_INFO[nome];if(info&&info.razaoSocial){return info.razaoSocial+(info.cnpj?" - CNPJ "+info.cnpj:"");}return nome;}
 var TIPOS_CX = ["CXPA","CXPB","CX1L","CX3L","CX6L","CX10L","CX15L","CX20L","Maleta"];
 var COLABS = ["Amanda","Bruna","Carol","Ediane","Heloisa","Maria Vitoria","Sthefany","Veronica"];
+// Insumos por cliente: cada cliente tem embalagens/materiais proprios.
+// Mellowbody e Bluecolor ainda nao tem lista definida (fica vazia ate ser informada).
+var CLIENTES_INSUMOS = {
+  "Carola": ["cx 1","cx 2","cx 5","cx 6","cx 15","Estrusado","Fitas","Saquinho G","Saquinho P"],
+  "Donna Indiana": ["CX-P","CX-M","CX-G","Caixa Maleta","cx 30X37X40","cx 56x41x27","cx 27X29X35","Estrusado","Fitas","Saquinho 40x60","Saquinho 40x50"],
+  "D'Elus": ["Comeia","Caixa Maleta","Fita Personalizada","Caixa P"],
+  "Sobrebarba": ["CX-P","CX-M","CX-G","Seda Personalizada","Seda Branca","Fita Gomada","Sacolas","Envelope"],
+  "Chris Pitanguy": ["Caixa P","Caixa M","Saco Envio","Bolsa Presente","Seda M","Seda P"],
+  "Sava": ["Cx","Cartao","Cartao Novo","Papel Colmeia"],
+  "SP Hair": ["Cx Branco P","Cx Branco G","Cx Preto","Cx Fedex 24x24x35","Saco Envio Preto","Cx Fedex 47x28x35","Cx Fedex 28x28x28","Cx UPS 2,5"],
+  "A-Line": ["Cx KIT"],
+  "Sorali": ["Cx DHL 02","Cx DHL 05","Cx DHL 06","Cx DHL 07","Cx DHL 08","Cx Fedex 42x34x28","Cx Fedex 51x43x38"],
+  "Knut": ["CX-25","CX-21","Display 2","CX-07","Fita","Saco Envio P","Plastico Bolha","Saco Envio M","Kraft","Caixa 34"],
+  "Felicia": ["Seda","Cx 30x20x12","Cx 25x15"],
+  "Bacco": ["Cx 19x23x24","Cx 19x24x15"],
+  "Hydra": ["Cx1 E 10x22x14","Cx2 E 11x30x21","Cx M 23X38X30","Cx 11X31X20"],
+  "Sem Fronteiras": ["CX Maleta 0","CX Maleta 1","CX Maleta 02","CX Maleta 03","CX Maleta 4","Caixa PB","CX 2","CX 3","CX 5","Fita Gomada","Plastico Bolha"],
+  "Beout": ["Caixa P","Caixa P2","Caixa M","Caixa G","Cx:P Fundo Branco","Caixa B2B","Cx:P Fundo Laranja","Laco Preto","Cx:G Fundo Branco","Laco Branco","Cx:G Fundo Laranja","Fita","Cartao Garantia","Cartao Raspadinha","Cartao Embaixadora","Cartao 10% Desconto","Caixa Natal","Caixa Branca","Adesivo","Cartao Black F","Cartao Cheguei","Envelope Cartinha","Sacola Branca","Caixa Laranja","Luva Branca","Saco Envio","Cheirinho","Fita Black F","Fita Natal","Caixa Bracelete","Caixa Alianca","Laco Duplo P","Laco Preto Cx Rosas","Laco Vermelho Cx Rosas"],
+  "Logton": ["CX-PA","CX-PB","CX-01L","CX-03L","CX-06L","CX-10L","CX-15L","CX-20L","CX-Maleta","Papel Bucha","Papel Kraft","Plastico Bolha","Strech Transp.","Strech Branco","Fita Gomada"],
+  "Mellowbody": [],
+  "Bluecolor": []
+};
+var selectedInsColab="", selectedInsCliente="", insContagem={}, insEnviados={}, insObs="";
+function selectInsColab(c){selectedInsColab=c;insContagem={};insEnviados={};insObs="";render();}
+function selectInsCliente(c){selectedInsCliente=c;insContagem={};insEnviados={};insObs="";render();}
+function setInsQtd(nome,val){insContagem[nome]=Math.max(0,parseInt(val,10)||0);}
+function insumosDoCliente(cliente){
+  var base=CLIENTES_INSUMOS[cliente]||[];
+  var custom=state.insumosCustom[cliente]||[];
+  return base.concat(custom.filter(function(n){return base.indexOf(n)<0;}));
+}
+function addInsExtra(){
+  var nome=document.getElementById("insExtraNome").value.trim();
+  if(!nome){showToast("Informe o nome do insumo","error");return;}
+  nome=capWords(nome);
+  if(insumosDoCliente(selectedInsCliente).indexOf(nome)>=0){showToast("Esse insumo ja esta na lista","error");return;}
+  if(!state.insumosCustom[selectedInsCliente])state.insumosCustom[selectedInsCliente]=[];
+  state.insumosCustom[selectedInsCliente].push(nome);
+  save();render();
+}
+function removeCustomInsumo(nome){
+  var lista=state.insumosCustom[selectedInsCliente];
+  if(!lista)return;
+  state.insumosCustom[selectedInsCliente]=lista.filter(function(n){return n!==nome;});
+  save();
+  delete insContagem[nome];delete insEnviados[nome];
+  render();
+}
+function enviarInsumo(nome,silencioso){
+  var dataHoje=fmtDate(getToday());
+  if(state.sheetsUrl){sendToSheets("insumo_item",{data:dataHoje,cliente:selectedInsCliente,insumo:nome,quantidade:insContagem[nome]||0,operador:selectedInsColab,observacoes:insObs.trim()});}
+  insEnviados[nome]=true;
+  if(!silencioso){showToast(nome+" enviado!");render();}
+}
+function editarInsumo(nome){delete insEnviados[nome];render();}
+function enviarTodosPendentes(){
+  var pendentes=insumosDoCliente(selectedInsCliente).filter(function(nome){return !insEnviados[nome];});
+  if(!pendentes.length){showToast("Nada pendente","error");return;}
+  pendentes.forEach(function(nome){enviarInsumo(nome,true);});
+  showToast(pendentes.length+" insumo(s) enviados!");
+  render();
+}
 
 var state = {
   view:"romaneio",
@@ -534,9 +596,10 @@ var state = {
   b2b:JSON.parse(localStorage.getItem("docas_b2b")||"[]"),
   romaneios:JSON.parse(localStorage.getItem("docas_romaneios")||"[]"),
   romaneiosRascunhos:JSON.parse(localStorage.getItem("docas_romaneios_rascunhos")||"[]"),
+  insumosCustom:JSON.parse(localStorage.getItem("docas_insumos_custom")||"{}"),
   toast:null
 };
-function save(){localStorage.setItem("docas_coletas",JSON.stringify(state.coletas));localStorage.setItem("docas_recebimentos",JSON.stringify(state.recebimentos));localStorage.setItem("docas_b2b",JSON.stringify(state.b2b));localStorage.setItem("docas_romaneios",JSON.stringify(state.romaneios));localStorage.setItem("docas_romaneios_rascunhos",JSON.stringify(state.romaneiosRascunhos));localStorage.setItem("docas_sheets_url",state.sheetsUrl);}
+function save(){localStorage.setItem("docas_coletas",JSON.stringify(state.coletas));localStorage.setItem("docas_recebimentos",JSON.stringify(state.recebimentos));localStorage.setItem("docas_b2b",JSON.stringify(state.b2b));localStorage.setItem("docas_romaneios",JSON.stringify(state.romaneios));localStorage.setItem("docas_romaneios_rascunhos",JSON.stringify(state.romaneiosRascunhos));localStorage.setItem("docas_insumos_custom",JSON.stringify(state.insumosCustom));localStorage.setItem("docas_sheets_url",state.sheetsUrl);}
 function getToday(){return new Date().toISOString().split("T")[0];}
 function getNow(){var n=new Date();return String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");}
 function fmtDate(d){if(!d)return"";var p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}
@@ -757,7 +820,7 @@ function render(){
 
   h+='';
 
-  var tabs=[{key:"romaneio",label:"&#128196; Romaneio"+(state.romaneiosRascunhos.length?" ("+state.romaneiosRascunhos.length+")":""),color:"var(--blue)"},{key:"recebimento",label:"&#128229; Receb.",color:"var(--purple)"},{key:"caixas",label:"&#128230; Caixas",color:"var(--teal)"},{key:"b2b",label:"&#128203; B2B",color:"var(--indigo)"},{key:"cq",label:"&#9889; CQ",color:"var(--amber)"},{key:"registros",label:"&#128202; Reg.",color:"var(--navy)"}];
+  var tabs=[{key:"romaneio",label:"&#128196; Romaneio"+(state.romaneiosRascunhos.length?" ("+state.romaneiosRascunhos.length+")":""),color:"var(--blue)"},{key:"recebimento",label:"&#128229; Receb.",color:"var(--purple)"},{key:"caixas",label:"&#128230; Caixas",color:"var(--teal)"},{key:"b2b",label:"&#128203; B2B",color:"var(--indigo)"},{key:"cq",label:"&#9889; CQ",color:"var(--amber)"},{key:"insumos",label:"&#128713; Insumos",color:"var(--orange)"},{key:"registros",label:"&#128202; Reg.",color:"var(--navy)"}];
   h+='<div class="tabs">';for(var ti=0;ti<tabs.length;ti++){var t=tabs[ti];h+='<button class="tab" style="background:'+(v===t.key?t.color:"var(--card)")+';color:'+(v===t.key?"#fff":"var(--muted)")+'" onclick="state.view=\''+t.key+'\';render()">'+t.label+'</button>';}h+='</div>';
   h+='<div class="content">';
 
@@ -902,6 +965,49 @@ function render(){
     h+='<div><label class="lbl">Quantidade de unidades *</label><input type="number" min="1" id="cqQtd" class="inp" placeholder="0"></div>';
     h+='<div><label class="lbl">Observacoes</label><input id="cqObs" class="inp" placeholder="Tipo: rotulagem, etiquetagem, kit, etc."></div>';
     h+='<button class="btn-submit" style="background:var(--amber)" onclick="submitCQ()">&#10003; Registrar Adequacao</button>';
+    h+='</div></div>';
+  }
+
+  // ──── INSUMOS ────
+  if(v==="insumos"){
+    h+='<div class="card"><div class="card-hdr"><span class="card-hdr-icon" style="background:var(--orange-lt)">&#128713;</span>Contagem de Insumos</div><div class="card-body">';
+    if(!selectedInsColab){
+      h+='<div><label class="lbl">Quem esta contando? *</label><div class="chips">';for(var i=0;i<COLABS.length;i++){var c=COLABS[i];h+='<span class="colab-chip colab-ins" data-colab="'+c+'" onclick="selectInsColab(\''+c+'\')">'+c+'</span>';}h+='</div></div>';
+    }else{
+      h+='<div class="cx-locked-bar" style="background:var(--orange-lt)"><div><span class="cx-label">Operador</span><br><span class="cx-value" style="color:var(--orange-dk)">'+esc(selectedInsColab)+'</span></div><button style="background:none;border:1px solid var(--orange);color:var(--orange-dk);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit" onclick="selectedInsColab=\'\';render()">Trocar</button></div>';
+    }
+    if(selectedInsColab){
+      var insClientes=Object.keys(CLIENTES_INSUMOS);
+      if(!selectedInsCliente){
+        h+='<div><label class="lbl">Cliente *</label><div class="chips" style="max-height:200px;overflow-y:auto">';for(var i=0;i<insClientes.length;i++){var c=insClientes[i];h+='<span class="client-chip" onclick="selectInsCliente(\''+esc(c)+'\')">'+esc(c)+'</span>';}h+='</div></div>';
+      }else{
+        h+='<div class="cx-locked-bar" style="background:var(--orange-lt)"><div><span class="cx-label">Cliente</span><br><span class="cx-value" style="color:var(--orange-dk)">'+esc(selectedInsCliente)+'</span></div><button style="background:none;border:1px solid var(--orange);color:var(--orange-dk);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit" onclick="selectedInsCliente=\'\';render()">Trocar</button></div>';
+        var listaIns=insumosDoCliente(selectedInsCliente);
+        h+='<div><label class="lbl">Observacoes (opcional)</label><input class="inp" value="'+escAttr(insObs)+'" placeholder="Vale pros proximos insumos enviados" oninput="insObs=this.value"></div>';
+        if(!listaIns.length){
+          h+='<div style="background:var(--bg);padding:16px;border-radius:10px;text-align:center;color:var(--muted);font-size:13px">Nenhum insumo cadastrado ainda para esse cliente — adicione abaixo.</div>';
+        }else{
+          listaIns.forEach(function(nome){
+            var enviado=!!insEnviados[nome];
+            var isCustom=(state.insumosCustom[selectedInsCliente]||[]).indexOf(nome)>=0;
+            var nomeJs=nome.replace(/'/g,"\\'");
+            h+='<div style="display:flex;gap:8px;align-items:flex-end">';
+            h+='<div style="flex:1"><label class="lbl">'+esc(nome)+'</label><input type="number" min="0" class="inp" value="'+(insContagem[nome]||"")+'" placeholder="0"'+(enviado?" disabled":"")+' oninput="setInsQtd(\''+nomeJs+'\',this.value)"></div>';
+            if(enviado){
+              h+='<button style="flex:0 0 auto;background:var(--success-bg);color:var(--success);border:none;border-radius:8px;padding:11px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap" onclick="editarInsumo(\''+nomeJs+'\')">&#10003; Enviado</button>';
+            }else{
+              h+='<button style="flex:0 0 auto;background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="enviarInsumo(\''+nomeJs+'\')">Enviar</button>';
+            }
+            if(isCustom){h+='<button style="flex:0 0 auto;background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer" title="Remover da lista" onclick="removeCustomInsumo(\''+nomeJs+'\')">&#10005;</button>';}
+            h+='</div>';
+          });
+          h+='<button class="act-btn" style="background:var(--bg);color:var(--muted);width:100%" onclick="enviarTodosPendentes()">Enviar Todos os Pendentes</button>';
+        }
+        h+='<div><label class="lbl">Adicionar insumo novo (opcional)</label><input class="inp" id="insExtraNome" placeholder="Nome do insumo"></div>';
+        h+='<button class="act-btn" style="background:var(--orange-lt);color:var(--orange-dk);width:100%" onclick="addInsExtra()">+ Adicionar a Lista</button>';
+        h+='<button class="btn-submit" style="background:var(--navy);margin-top:6px" onclick="selectedInsCliente=\'\';render()">&#10003; Concluir e Trocar Cliente</button>';
+      }
+    }
     h+='</div></div>';
   }
 
